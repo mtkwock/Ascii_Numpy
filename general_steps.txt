@@ -1,0 +1,123 @@
+Here is the OVERALL steps to convert the video to ASCII including most specifics and some steps that are incomplete so far.
+--MITCHELL KWOCK
+
+	***************
+	*****To do*****
+	***************
+
+ - Step 1.5 needs to be made.  
+ - If this entire process can be condensed into a Batch process, it'd be great.
+
+	***********************
+	*****Keep in mind:*****
+	***********************
+
+ - As we trim the video, we should use gimp edge-detect.scm to convert on the fly.
+ - During this time, If we can use the ASCII Filter, then we can decrease the required memory used by the program
+ - KEEP DELETING THINGS TO SAVE MEMORY, it's irritating to deal with an overflow of images (a 5-minute 1025 x 820 video consists of 9000 frames and 2.8 GB of info)
+ - KEEP THINGS IN THE SAME DIRECTORY, to refrain from moving files.  There are too many, and we never want to open the files individually.
+
+	******************
+	*****Programs*****
+	******************
+
+REQUIRES:
+ - Video (preferably mp4 format, unsure about support for other formats)
+ - ffmpeg (working)
+ - gimp (most recent version if possible)
+ - mencoder
+
+OPTIONAL:
+ - youtube-dl
+
+
+ 	***************
+ 	*****TL;DR*****
+ 	***************
+
+ENTER COMMANDS IN THIS ORDER
+
+****STILL NEEDED:
+****How to obtain name of file
+****How to obtain 
+
+youtube-dl <URL>
+ffmpeg -i <VIDEO> -ab 128k -ac 2 -ar 44100 -vn ./out/SOUND.mp4
+ffmpeg -ss 00:00:00 -t HR:MIN:S.cS -i <VIDEO> -r 30.0 ./in/%8d.jpg
+rm <VIDEO>
+gimp -i -b '(edge-batch "./in/*.jpg" THRESHHOLD 255)' -b '(gimp-quit 0)'
+python batch.py
+rm ./in/*.jpg
+python txt_to_pic.py
+rm ./out/*.txt
+cd out/
+mencoder mf://*.jpg -mf w=1280:h=720:fps=30:type=jpg -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o video.avi
+ffmpeg -i SOUND.mp4 -i video.avi -acodec copy -vcodec copy dir/<FINALVIDEONAME>
+rm SOUND.mp4
+rm *.jpg
+
+	**************************
+	*****Explained steps:*****
+	**************************
+
+1) Rip from YouTube in the ./in/ directory: (Or use any mp4 video.)  Change name to whatever you want, will be split up later, so keep it readable.
+	youtube-dl -f 22 <URL> 
+	Length: Dependent on video, generally fast
+
+1.5) Rip sound from video [UNMADE]
+	Use ffmpeg or VLC player to remove the sound from the video and put it into another file and put it into ./out/
+
+ffmpeg -i <VIDEO> -ab 128k -ac 2 -ar 44100 -vn SOUND.mp4
+
+2) Split into JPEG images in the /in/ directory:
+	ffmpeg -ss 00:00:00 -t 00:00:00.00 -i YOURMOVIE.MP4 -r 30.0 %8d.jpg
+				START		LENGTH			NAME 			FPS 
+	Change LENGTH to the time of video in Hours:Minutes:Seconds:Subseconds, FPS to whatever you want
+	Length: Generally obtainable at 100 FPS export.  At 30 FPS, that's a conversion rate of 3.3 seconds/second of video
+
+**Can Now Delete Original Video**
+
+3) Use Edge Detection on Images in the SAME FOLDER as the images are located:
+	gimp -i -b '(edge-batch "*.jpg" 10 255)' -b '(gimp-quit 0)'
+	(Note: Change value before 255 to change the threshhold of white.  A Higher number means less detail in general)
+	Length: Dependent on size of files, good estimate at 2-3 images per second
+
+**Replaces the Images in the Directory with their equivalent edge.**
+
+
+//##UPDATE INCLUDED IN 4##
+//3.5) Initiate character list [JUST MADE]:
+//	Run "(TO BE DETERMINED).py" in order to scan 20 dispersed images for the most common character. with char_count.py
+//	Utilize the first 20 of those characters found from char_count including a 32 at the beginning.  Trim the extra to cut down on time and maintain relative accuracy.
+//	In edge_ascii.py, change occurence to the first 20 characters from the output of the above.
+
+4) Convert into ASCII:
+	Run Batch.py with all images in "In" Folder
+	Length: EXTREMELY DEPENDENT ON COMPLEXITY OF EDGE DETECTED JPEGS
+	Bad Apple Frames can be done in <1 second.  More realistically, guess ~5 seconds per frame.
+
+**Can Now Delete All of the Pictures**
+
+5) Convert Text to Images:
+	Run txt_to_pic.py (Change Height/Width of picture) after changing the range settings in the imagify_all() function (1, 1+Largest Value)
+	Length: Quite quick, I think it can generate it at a rate of 5-10 images per second
+
+**Can delete the Text Files now, unless we want to keep it for future reference or for use for a different video format?**
+
+6) Put together into Movie:
+	mencoder mf://*.jpg -mf w=1280:h=720:fps=30:type=jpg -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o OUTPUT.avi
+	Run this from command in the Out directory, change output name, height and width. along with FPS to match earlier step.
+	Length: Quite quick, can be made in without much extra time.
+
+**Now the Text Pictures can be deleted**
+
+7) Add Sound:
+	ffmpeg -i audio.mp3 -i video.avi -acodec copy -vcodec copy output.avi
+	Ensure both audio and video are in the right directory.  Change names to match.
+	Length: Don't even worry
+
+**We can replace the original with the sounded one**
+
+	******************
+	*****FINISHED*****
+	******************

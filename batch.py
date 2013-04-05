@@ -12,8 +12,7 @@ import subprocess
 import sys
 import re
 import pwd
-
-
+from main import write_to_file
 from subprocess import Popen, PIPE
 
 
@@ -82,6 +81,7 @@ scm =  """; Usage: first place in .gimp-2.8/scripts
 # if __name__ == '__main__':
 #     pool.map(convert_image, range(len(files)))
 
+<<<<<<< HEAD
 # Get the duration from our input string and return a
 # dictionary of hours, minutes, seconds
 
@@ -210,6 +210,72 @@ def finalize():
     # system("mv ascii.mp4 ../")
     chdir(current_dir)
 
+def begin_smart():
+    #reset time
+    tick()
+
+    #where source images are stored
+    input_dir = './in/'
+
+    #where resultant images will be stored
+    output_dir = './out/'
+
+    #Used if images are processed in chunks
+    last_file = ''
+
+    file_counter = 0
+    #Grab a list of the files in the input directory and sort them
+    #Exclude files that have already been processed (as defined by last_file)
+    edge_ascii.set_occurence(charfreq.get_most_frequent(input_dir, 1))
+    files = sorted([ f for f in listdir(input_dir) if isfile(join(input_dir,f)) and f > last_file])
+    for f in files:
+        image = Image.open(input_dir + f)
+#       print f
+        name,_ = f.split('.')
+
+        #the real work happens here
+        ascii_to_file(image, output_dir + name+".txt")
+
+        file_counter = file_counter + 1
+        #output time
+        t = tock(True)
+        print(name+".txt was made")
+        print("Time Elapsed: " + str(t)[:7] + "   Average time: " + str(float(t)/file_counter)[:7])
+
+def begin_gradient():
+    #reset time
+    tick()
+
+    #where source images are stored
+    input_dir = './in/'
+
+    #where resultant images will be stored
+    output_dir = './out2/'
+
+    #Used if images are processed in chunks
+    last_file = ''
+
+    file_counter = 0
+    #Grab a list of the files in the input directory and sort them
+    #Exclude files that have already been processed (as defined by last_file)
+#   edge_ascii.set_occurence(charfreq.get_most_frequent(input_dir))
+    files = sorted([ f for f in listdir(input_dir) if isfile(join(input_dir,f)) and f > last_file])
+    for f in files:
+        if(f[f.index('.'):len(f)] is not ".txt"):
+            continue
+        image = input_dir + f
+#       print f
+        name,_ = f.split('.')
+
+        #the real work happens here
+        write_to_file(image, output_dir + name+".txt")
+
+        file_counter = file_counter + 1
+        #output time
+        t = tock(True)
+        print(name+".txt was made")
+        print("Time Elapsed: " + str(t)[:7] + "   Average time: " + str(float(t)/file_counter)[:7])
+
 if(__name__ == "__main__"):
     prep()
     youtube_dl()
@@ -217,6 +283,4 @@ if(__name__ == "__main__"):
     begin()
     finalize()
     clean_up()
-
-
 
