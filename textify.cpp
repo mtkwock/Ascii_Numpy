@@ -1,11 +1,12 @@
 //GLOBALVARIABLES//
+
 const int width;
 const int height;
-const int length = width * height;
+const long length = width * height;
 
-const byteWidth = (width + 1) / 9;
-const byteHeight = ((height + 2)<<3) / 9;
-const int byteLength = byteWidth * byteHeight;
+const int byteWidth = (width + 1) / 9;
+const int byteHeight = ((height + 2)<<3) / 9;
+const unsigned long byteLength = byteWidth * byteHeight;
 
 const int bitTable[] = {0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8}
 //ENDGLOBAL//
@@ -13,12 +14,12 @@ const unsigned char[][] = {{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x
 
 int[] textify(int image[])
 {
-	byte byteImage[] = new byte[byteLength];
+	unsigned char byteImage[] = new byte[byteLength];
 	int workingIndex = 0;
 	int byte_index = 0;
 	const int horLimit = byte_width * 9;
 
-	while(workingIndex <= length){
+	while(workingIndex < length){
 		if(workingIndex % width >= horLimit){
 			workingIndex = (workingIndex + 8) / width * width
 			byteIndex++;
@@ -94,7 +95,7 @@ const int length = width * height;
 
 Decompose picture into a single array of length w * h filled with 1's or 0's representing white or black pixels.
 
-const byteWidth = (width + 1) / 9  //Accounts for the elimination of every 9th byte (index 8), assuming the last value is left unaccounted for at all times  Rounds down in total number of bytes  (61 pixels wide translates to a width of 6 bytes)
+const byteWidth = (width + 1) / 9  //Accounts for the elimination of every 9thunsigned char(index 8), assuming the last value is left unaccounted for at all times  Rounds down in total number of bytes  (61 pixels wide translates to a width of 6 bytes)
 
 const byteHeight = ((height + 2)<<3) / 9 //The 17th and 18th row of every 18 is being eliminated.  This is the equivalent of multiplying by 16 and dividing by 18.  [indices 16 and 17 are not accounted for]  Rounds down in total number of bytes
 
@@ -102,7 +103,7 @@ const int byteLength = byteWidth * byteHeight;
 
 byte byteImage[] = new byte[byteLength]; //The bytes which represent the image
 int workingIndex = 0;
-int byte_index = 0; //Which byte it's working on
+int byte_index = 0; //Whichunsigned charit's working on
 const horLimit = byte_width * 9;
 
 while(workingIndex <= length){
@@ -122,25 +123,25 @@ while(workingIndex <= length){
 } //The byteImage is now fully completed and
 
 characters stored as the following:
-const byte chars[][] = new byte[95][16]
+constunsigned charchars[][] = new byte[95][16]
 
-const byte a[] = new byte[16]
-a[ 0] = byte = [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 1] = byte = [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 2] = byte = [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 3] = byte = [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 4] = byte = [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 5] = byte = [0][0][1][1][1][1][1][0] = 00111110 =  62
-a[ 6] = byte = [0][0][0][0][0][1][1][1] = 00000111 =   7
-a[ 7] = byte = [0][0][0][0][0][0][1][1] = 00111111 =  63
-a[ 8] = byte = [0][0][1][1][1][1][1][1] = 01110111 = 120
-a[ 9] = byte = [0][1][1][1][0][1][1][1] = 01100011 = 102
-a[10] = byte = [0][1][1][0][0][0][1][1] = 01110111 = 120
-a[11] = byte = [0][1][1][1][0][1][1][1] = 00111111 =  63
-a[12] = byte = [0][0][1][1][1][1][1][1] = 00000000 =   0
-a[13] = byte = [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[14] = byte = [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[15] = byte = [0][0][0][0][0][0][0][0] = 00000000 =   0
+constunsigned chara[] = new byte[16]
+a[ 0] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 1] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 2] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 3] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 4] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 5] =unsigned char= [0][0][1][1][1][1][1][0] = 00111110 =  62
+a[ 6] =unsigned char= [0][0][0][0][0][1][1][1] = 00000111 =   7
+a[ 7] =unsigned char= [0][0][0][0][0][0][1][1] = 00111111 =  63
+a[ 8] =unsigned char= [0][0][1][1][1][1][1][1] = 01110111 = 120
+a[ 9] =unsigned char= [0][1][1][1][0][1][1][1] = 01100011 = 102
+a[10] =unsigned char= [0][1][1][0][0][0][1][1] = 01110111 = 120
+a[11] =unsigned char= [0][1][1][1][0][1][1][1] = 00111111 =  63
+a[12] =unsigned char= [0][0][1][1][1][1][1][1] = 00000000 =   0
+a[13] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[14] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[15] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
 
 
 */
