@@ -196,7 +196,6 @@ void textify(unsigned char pix[])
 	int byteIndex = 0;
 	while(workingIndex < length){
 		byteImage[byteIndex] = byteImage[byteIndex] * 2 + (pix[workingIndex]>>7);
-		int temp = 4 ^ 4;
 		workingIndex++;
 		if((workingIndex - 1) % width + 1>= hLim){
 			workingIndex = (workingIndex + 7) / width * width;
@@ -227,7 +226,7 @@ void textify(unsigned char pix[])
 	std::cout<<"Step 2 Finished" << std::endl;
 
 //	unsigned char *bestChars = new unsigned char[byteLength / 16];
-	char bestChars[byteLength>>4];
+	unsigned char bestChars[byteLength>>4];
 	byteIndex = 0;
 
 	while(byteIndex != byteWidth){
@@ -236,18 +235,18 @@ void textify(unsigned char pix[])
 		while(vertPos != byteHeight){
 //			std::cout << "Height Once" << std::endl;
 			int lowest = 128;
-			for(int charNum = 0; charNum != 95; charNum++){
+			for(int charNum = 0x0; charNum != 0x5f; charNum++)
+			{
 				int charComp = 0;
-				for(int vertOff = 0; vertOff != 16; vertOff++){
+				for(int vertOff = 0; vertOff != 16; vertOff++)
+				{
 					charComp+= bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];
 				}
-				if(charComp < lowest){
+				if(charComp < lowest)
+				{
 					lowest = charComp;
 					bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);
-				}
-				if(bestChars[vertPos / 16 * byteWidth + byteIndex] < 32 || bestChars[vertPos / 16 * byteWidth + byteIndex] > 126)
-				{
-					bestChars[vertPos / 16 * byteWidth + byteIndex] = 0x20;
+//					std::cout << charNum + 32<< " ";
 				}
 			}
 			vertPos+=16;
@@ -260,14 +259,17 @@ void textify(unsigned char pix[])
 
 	std::cout << "Step 3 Finished" << std::endl;
 
+	int count = 0;
+
 	std::ofstream outfile;
 	outfile.open("out/result.txt");
-	for(int i = 0; i < ::length; i++)
+	for(int i = 0; i < ::byteLength / 16; i++)
 	{
-		if(i % width == 0){
+		if(i % byteWidth == 0){
 			outfile << "\n";
 		}
 		outfile << bestChars[i];
+		count++;
 	}
 	outfile.close();
 
