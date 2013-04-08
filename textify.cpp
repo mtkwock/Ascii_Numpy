@@ -1,14 +1,11 @@
 #include <iostream>
 #include <string>
-#include <sstream>
 #include "CImg.h"
-#include <fstream> //Necessary for file input and output
+#include <fstream>
 #include <vector>
-//using namespace std; //Main one to make cin and cout faster
 #define cimg_use_jpeg 1
 #define cimg_use_png 1
 using namespace cimg_library;
-// 
 /*
 REQUIRED INSTALLS:
 sudo apt-get install imagemagick
@@ -19,7 +16,6 @@ g++ -o textify.exe textify.cpp -O2 -L/usr/X11R6/lib -lm -lpthread -lX11
 
 HOW TO USE:
 ./textify.exe
-
 */
 
 //GLOBALVARIABLES
@@ -155,20 +151,6 @@ M, W,?,f,H,r,t,U,w,5,7,>,]
 
 //ENDGLOBAL//
 
-void printCroppedArray(int array[], int top, int bot, int left, int right){
-	for(int beginRow = top; beginRow < bot; beginRow++){
-		for(int beginCol = left; beginCol < right; beginCol++){
-			if(array[beginRow * ::width + beginCol]){
-				std::cout << "##";
-			}
-			else{
-				std::cout << "  ";
-			}
-		}
-		std::cout << std::endl;
-	}
-}
-
 
 void init(int w, int h){
 	::width = w;
@@ -186,11 +168,9 @@ void init(int w, int h){
 		byteHeight+= height%18;
 	}
 	::byteLength = (long)byteWidth * (long)byteHeight;
-
 }
 
-void textify(unsigned char pix[])
-{
+void textify(unsigned char pix[]){
 	unsigned char byteImage[::byteLength];
 	int workingIndex = 0;
 	int byteIndex = 0;
@@ -201,109 +181,54 @@ void textify(unsigned char pix[])
 			workingIndex = (workingIndex + 7) / width * width;
 			byteIndex++;
 			if(workingIndex / ::width % 18 == 16){
-				workingIndex+= 2*::width;
-			}
-		}
+				workingIndex+= 2*::width;}}
 		else if(workingIndex % width % 9 == 8){
 			byteIndex++;
-			workingIndex++;
-		}
-	}
+			workingIndex++;}}
 
 	byteIndex = 0;
-	std::cout<< "Step 1 Finished" << std::endl;
 
-//	int compPart[94][byteLength];
 	std::vector< std::vector<int> > compPart(95, std::vector<int> (byteLength, 0));
-//	int** compPart = new int[95][byteLength];
 	while(byteIndex != byteLength){
 		for(int charNum = 0; charNum < 95; charNum++){
-			compPart[charNum][byteIndex] = byteImage[byteIndex] ^ ::chars[charNum][(byteIndex / byteWidth) & 15];
-		}
-		byteIndex++;
-	}
-//	delete byteImage;
-	std::cout<<"Step 2 Finished" << std::endl;
-
-//	unsigned char *bestChars = new unsigned char[byteLength / 16];
+			compPart[charNum][byteIndex] = byteImage[byteIndex] ^ ::chars[charNum][(byteIndex / byteWidth) & 15];}
+		byteIndex++;}
 	unsigned char bestChars[byteLength>>4];
+
 	byteIndex = 0;
 
 	while(byteIndex != byteWidth){
-//		std::cout << "Width Once" << std::endl;
 		int vertPos = 0;
 		while(vertPos != byteHeight){
-//			std::cout << "Height Once" << std::endl;
 			int lowest = 128;
-			for(int charNum = 0x0; charNum != 0x5f; charNum++)
-			{
+			for(int charNum = 0x0; charNum != 0x5f; charNum++){
 				int charComp = 0;
-				for(int vertOff = 0; vertOff != 16; vertOff++)
-				{
-					charComp+= bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];
-				}
-				if(charComp < lowest)
-				{
+				for(int vertOff = 0; vertOff != 16; vertOff++){
+					charComp+= bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];}
+				if(charComp < lowest){
 					lowest = charComp;
-					bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);
-//					std::cout << charNum + 32<< " ";
-				}
-			}
-			vertPos+=16;
-//			std::cout << "Byte Height " <<byteHeight << std::endl;
-		}
-		byteIndex++;
-	}
-
-//	delete compPart;
-
-	std::cout << "Step 3 Finished" << std::endl;
-
-	int count = 0;
-
+					bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);}}
+			vertPos+=16;}
+		byteIndex++;}
 	std::ofstream outfile;
 	outfile.open("out/result.txt");
-	for(int i = 0; i < ::byteLength / 16; i++)
-	{
+	for(int i = 0; i < ::byteLength / 16; i++){
 		if(i % byteWidth == 0){
-			outfile << "\n";
-		}
-		outfile << bestChars[i];
-		count++;
-	}
-	outfile.close();
-
-//	return bestChars;
-}
+			outfile << "\n";}
+		outfile << bestChars[i];}
+	outfile.close();}
 
 
 int main()
 {
 
 //	CImg<unsigned char> img(640,400,1,3); // Define a 640x400 color image with 8 bits per color component.
-//	std::string name;
-//	std::cin >> name;
-	CImg<unsigned char> img("in/result.jpg");
-	init(img.width(), img.height());
 //	unsigned char *texts = textify(img.data());
-	textify(img.data());
-//	std::cout << img.value_string(',', 0); //First Value is separator, second is the max string value
-//	for(int i = 0; i < length; i++)
-//	{
-//		std::cout << (int)img.data()[i] << " ";
-//	}
-/*	std::ofstream outfile;
-	outfile.open("out/result.txt");
-	for(int i = 0; i < ::length; i++)
-	{
-		if(i % width == 0){
-			outfile << "\n";
-		}
-		outfile << (char)texts[i];
+	for(int i = 0; i < 100; i++){
+		CImg<unsigned char> img("in/result.jpg");
+		init(img.width(), img.height());
+		textify(img.data());
 	}
-	outfile.close();*/
-//	delete texts;
-//	img.fill(0); // Set pixel values to 0 (color : black)
 //	unsigned char purple[] = { 255,0,255 }; // Define a purple color
 //	img.draw_text(100,100,"Hello World",purple); // Draw a purple "Hello world" at coordinates (100,100).
 //	img.display("My first CImg code"); // Display the image in a display window.
