@@ -2,15 +2,33 @@
 #include <string>
 #include <sstream>
 #include "CImg.h"
-//using namespace std;
+#include <fstream> //Necessary for file input and output
+#include <vector>
+//using namespace std; //Main one to make cin and cout faster
+#define cimg_use_jpeg 1
+#define cimg_use_png 1
 using namespace cimg_library;
-// g++ -o textify.exe textify.cpp -O2 -L/usr/X11R6/lib -lm -lpthread -lX11
-// COMPILE using ABOVE
+// 
+/*
+REQUIRED INSTALLS:
+sudo apt-get install imagemagick
+sudo apt-get intall cimg-dev
+
+HOW TO COMPILE:
+g++ -o textify.exe textify.cpp -O2 -L/usr/X11R6/lib -lm -lpthread -lX11
+
+HOW TO USE:
+./textify.exe
+
+*/
+
 //GLOBALVARIABLES
 //Initiated in init(w, h)
 int width;
 int height;
 unsigned long length = width * height;
+
+int hLim;
 
 int byteWidth;
 int byteHeight;
@@ -157,8 +175,10 @@ void init(int w, int h){
 	::height = h;
 	::length = width * height;
 
+
 	::byteWidth = (width + 1) / 9;
 	::byteHeight = ((height/18)<<4);
+	::hLim = byteWidth * 9 - 1;
 	if(height % 18 >= 16){
 		byteHeight+= 16;
 	}
@@ -166,19 +186,19 @@ void init(int w, int h){
 		byteHeight+= height%18;
 	}
 	::byteLength = (long)byteWidth * (long)byteHeight;
+
 }
 
-void textify(int pix[])
+void textify(unsigned char pix[])
 {
-	unsigned char *byteImage = new unsigned char[::byteLength];
+	unsigned char byteImage[::byteLength];
 	int workingIndex = 0;
 	int byteIndex = 0;
-	const int horLimit = byteWidth * 9 - 1;
 	while(workingIndex < length){
 		byteImage[byteIndex] = byteImage[byteIndex] * 2 + (pix[workingIndex]>>7);
 		int temp = 4 ^ 4;
 		workingIndex++;
-		if((workingIndex - 1) % width + 1>= horLimit){
+		if((workingIndex - 1) % width + 1>= hLim){
 			workingIndex = (workingIndex + 7) / width * width;
 			byteIndex++;
 			if(workingIndex / ::width % 18 == 16){
@@ -192,27 +212,29 @@ void textify(int pix[])
 	}
 
 	byteIndex = 0;
+	std::cout<< "Step 1 Finished" << std::endl;
 
-	int compPart[95][byteLength];
-
+//	int compPart[94][byteLength];
+	std::vector< std::vector<int> > compPart(95, std::vector<int> (byteLength, 0));
+//	int** compPart = new int[95][byteLength];
 	while(byteIndex != byteLength){
 		for(int charNum = 0; charNum < 95; charNum++){
-			compPart[charNum][byteIndex] = byteImage[byteIndex] ^ chars[charNum][(byteIndex / byteWidth) & 15];
-			if(charNum == 124-32){
-//				cout << compPart[charNum][byteIndex] << endl;			
-			}
+			compPart[charNum][byteIndex] = byteImage[byteIndex] ^ ::chars[charNum][(byteIndex / byteWidth) & 15];
 		}
 		byteIndex++;
 	}
+//	delete byteImage;
+	std::cout<<"Step 2 Finished" << std::endl;
 
-	int bestChars[byteLength];
+//	unsigned char *bestChars = new unsigned char[byteLength / 16];
+	char bestChars[byteLength>>4];
 	byteIndex = 0;
 
 	while(byteIndex != byteWidth){
-		std::cout << "Width Once" << std::endl;
+//		std::cout << "Width Once" << std::endl;
 		int vertPos = 0;
 		while(vertPos != byteHeight){
-			std::cout << "Height Once" << std::endl;
+//			std::cout << "Height Once" << std::endl;
 			int lowest = 128;
 			for(int charNum = 0; charNum != 95; charNum++){
 				int charComp = 0;
@@ -221,69 +243,68 @@ void textify(int pix[])
 				}
 				if(charComp < lowest){
 					lowest = charComp;
-					std::cout << lowest << std::endl;
-					bestChars[vertPos / 16 * byteWidth + byteIndex] = charNum + 32;
+					bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);
+				}
+				if(bestChars[vertPos / 16 * byteWidth + byteIndex] < 32 || bestChars[vertPos / 16 * byteWidth + byteIndex] > 126)
+				{
+					bestChars[vertPos / 16 * byteWidth + byteIndex] = 0x20;
 				}
 			}
 			vertPos+=16;
-			std::cout << "Byte Height " <<byteHeight << std::endl;
+//			std::cout << "Byte Height " <<byteHeight << std::endl;
 		}
 		byteIndex++;
 	}
 
-//	std::stringstream ss;
-//	ss << bestChars[0];
-	printCroppedArray(pix, 0, 30, 0, 16);
-	std::cout <<bestChars[0] << ' '<<bestChars[1] << ' '<<bestChars[2] << ' ' << bestChars[3] << std::endl;
+//	delete compPart;
+
+	std::cout << "Step 3 Finished" << std::endl;
+
+	std::ofstream outfile;
+	outfile.open("out/result.txt");
+	for(int i = 0; i < ::length; i++)
+	{
+		if(i % width == 0){
+			outfile << "\n";
+		}
+		outfile << bestChars[i];
+	}
+	outfile.close();
+
+//	return bestChars;
 }
 
 
 int main()
 {
-	init(18, 36);
-	int test[] = {	0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
-					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
-					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 0, 0, 0,  0, 0, 0,0, 0, 0, 0, 0, 0, 0,  0, 0, 0,0,
-					0, 0, 0, 0, 0, 0,  0, 0, 0,0, 0, 0, 0, 0, 0, 0,  0, 0, 0,0
-					};
-//	textify(test);
-	CImg<unsigned char> img(640,400,1,3); // Define a 640x400 color image with 8 bits per color component.
-	img.fill(0); // Set pixel values to 0 (color : black)
-	unsigned char purple[] = { 255,0,255 }; // Define a purple color
-	img.draw_text(100,100,"Hello World",purple); // Draw a purple "Hello world" at coordinates (100,100).
-	img.display("My first CImg code"); // Display the image in a display window.
+
+//	CImg<unsigned char> img(640,400,1,3); // Define a 640x400 color image with 8 bits per color component.
+//	std::string name;
+//	std::cin >> name;
+	CImg<unsigned char> img("in/result.jpg");
+	init(img.width(), img.height());
+//	unsigned char *texts = textify(img.data());
+	textify(img.data());
+//	std::cout << img.value_string(',', 0); //First Value is separator, second is the max string value
+//	for(int i = 0; i < length; i++)
+//	{
+//		std::cout << (int)img.data()[i] << " ";
+//	}
+/*	std::ofstream outfile;
+	outfile.open("out/result.txt");
+	for(int i = 0; i < ::length; i++)
+	{
+		if(i % width == 0){
+			outfile << "\n";
+		}
+		outfile << (char)texts[i];
+	}
+	outfile.close();*/
+//	delete texts;
+//	img.fill(0); // Set pixel values to 0 (color : black)
+//	unsigned char purple[] = { 255,0,255 }; // Define a purple color
+//	img.draw_text(100,100,"Hello World",purple); // Draw a purple "Hello world" at coordinates (100,100).
+//	img.display("My first CImg code"); // Display the image in a display window.
 	return 0;
 }
 
@@ -359,4 +380,44 @@ a[14] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
 a[15] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
 
 
+Should report:
+124 124 124 124
+	int test[] = {	0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
+					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
+					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 0, 0, 0,  0, 0, 0,0, 0, 0, 0, 0, 0, 0,  0, 0, 0,0,
+					0, 0, 0, 0, 0, 0,  0, 0, 0,0, 0, 0, 0, 0, 0, 0,  0, 0, 0,0
+					};
+//	textify(test);
 */
