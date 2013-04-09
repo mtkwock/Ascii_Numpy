@@ -2,10 +2,15 @@
 #include <string>
 #include "CImg.h"
 #include <fstream>
+#include <istream>
 #include <vector>
-#define cimg_use_jpeg 1
+#include <dirent.h>
+//#define cimg_use_jpeg 1
 #define cimg_use_png 1
 using namespace cimg_library;
+using std::cout;
+using std::cin;
+using std::endl;
 /*
 REQUIRED INSTALLS:
 sudo apt-get install imagemagick
@@ -30,7 +35,9 @@ int byteWidth;
 int byteHeight;
 unsigned long byteLength;
 
-int bitTable[] = {	0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 
+const unsigned char isFile = 0x8;
+
+const int bitTable[] = {	0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 
 					1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
 					1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
 					2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
@@ -47,7 +54,7 @@ int bitTable[] = {	0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
 					3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
 					4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8};
 
-unsigned char chars[][16] = {
+const unsigned char chars[][16] = {
 { 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0}, //  (32) 
 { 0x0,  0x0,  0x0, 0x1c, 0x1c, 0x1c, 0x1c, 0x18, 0x18, 0x18,  0x0, 0x1c, 0x1c,  0x0,  0x0,  0x0}, //! (33) 
 { 0x0,  0x0, 0x36, 0x36, 0x36, 0x36,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0}, //" (34) 
@@ -144,6 +151,17 @@ unsigned char chars[][16] = {
 { 0x0,  0x0, 0x78, 0x1c,  0xc,  0xc,  0xc,  0xc,  0xf,  0xc,  0xc,  0xc,  0xc,  0xc, 0x1c, 0x78}, //} (125) 
 { 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0, 0x7b, 0xde,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0}}; //~ (126) FIXED
 
+const unsigned char chBright[95] = 
+{0,24,16,51,45,53,55,11,34,33,
+24,22,14, 5, 8,33,56,30,37,38,
+37,36,45,30,51,44,16,20,24,16,
+22,24,72,46,50,36,46,37,32,42,
+53,32,37,45,26,55,52,50,38,60,
+49,36,27,50,44,55,44,39,33,34,
+33,46,24, 8, 4,38,47,31,51,38,
+38,56,45,28,37,46,28,46,37,40,
+45,49,27,33,37,36,35,47,34,43,
+30,34,28,36,12};
 /*
 Characters that need to be redone:
 M, W,?,f,H,r,t,U,w,5,7,>,]
@@ -169,13 +187,20 @@ void init(int w, int h){
 	}
 	::byteLength = (long)byteWidth * (long)byteHeight;
 }
+/*
+void textify(char *filename){
+	CImg<unsigned char> img(filename);
+	init(img.width(), img.height());
+	textify(img.data());
+}*/
 
-void textify(unsigned char pix[]){
+void textify(unsigned char pix[], const char* filename){
 	unsigned char byteImage[::byteLength];
 	int workingIndex = 0;
 	int byteIndex = 0;
+
 	while(workingIndex < length){
-		byteImage[byteIndex] = byteImage[byteIndex] * 2 + (pix[workingIndex]>>7);
+		byteImage[byteIndex] = byteImage[byteIndex] * 2 + (pix[workingIndex]/128);
 		workingIndex++;
 		if((workingIndex - 1) % width + 1>= hLim){
 			workingIndex = (workingIndex + 7) / width * width;
@@ -186,49 +211,174 @@ void textify(unsigned char pix[]){
 			byteIndex++;
 			workingIndex++;}}
 
-	byteIndex = 0;
 
-	std::vector< std::vector<int> > compPart(95, std::vector<int> (byteLength, 0));
+	unsigned char bestChars[byteLength/16];
+
+	for(int i = 0; i < byteLength/16; i++){  //Eliminates pixels under certain threshholds
+		char brightness = 0;
+		int hTrans = i / byteWidth * byteWidth * 16 + i % byteWidth;
+		for(int part = 0; part < 16; part++){
+			brightness += bitTable[byteImage[hTrans + part * byteWidth]];}
+		if(brightness <= 4){
+			bestChars[hTrans] = 0x10;}
+		else{
+			bestChars[hTrans] = 0x0;
+		}
+	}
+
+	byteIndex = 0;
+//	std::vector< std::vector<int> > compPart(95, std::vector<int> (byteLength, 0));
+
+	std::vector< std::vector<int> > compPart;
+	compPart.resize(95, std::vector<int> (byteLength, 0));
+
+
 	while(byteIndex != byteLength){
-		for(int charNum = 0; charNum < 95; charNum++){
-			compPart[charNum][byteIndex] = byteImage[byteIndex] ^ ::chars[charNum][(byteIndex / byteWidth) & 15];}
+		if(bestChars[byteIndex / (16 * byteWidth) * byteWidth + byteIndex % byteWidth != 32]){
+			for(int charNum = 0; charNum < 95; charNum++){
+				compPart[charNum][byteIndex] = byteImage[byteIndex] ^ chars[charNum][(byteIndex / byteWidth) & 15];}}
 		byteIndex++;}
-	unsigned char bestChars[byteLength>>4];
 
 	byteIndex = 0;
 
 	while(byteIndex != byteWidth){
 		int vertPos = 0;
 		while(vertPos != byteHeight){
-			int lowest = 128;
-			for(int charNum = 0x0; charNum != 0x5f; charNum++){
-				int charComp = 0;
-				for(int vertOff = 0; vertOff != 16; vertOff++){
-					charComp+= bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];}
-				if(charComp < lowest){
-					lowest = charComp;
-					bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);}}
+			if(bestChars[vertPos/16 * byteWidth + byteIndex] !=0x10){
+				int lowest = 0xff;
+				for(int charNum = 0x0; charNum != 0x5f; charNum++){
+					int charComp = 0;
+					for(int vertOff = 0; vertOff != 16; vertOff++){
+						charComp += bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];}
+//					charComp -= chBright[charNum] / 4;
+					if(charComp < lowest){
+						lowest = charComp;
+						bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);}}
+			}
+			else{
+				bestChars[vertPos/16 * byteWidth + byteIndex] = 0x20;
+			}
 			vertPos+=16;}
 		byteIndex++;}
+
+//	cout<<width<<" "<<height<<" "<<length<<" "<<byteWidth<<" "<<byteHeight<<" "<<byteLength<<endl;
+
 	std::ofstream outfile;
-	outfile.open("out/result.txt");
-	for(int i = 0; i < ::byteLength / 16; i++){
+	outfile.open(filename);
+	for(int i = 0; i < byteLength / 16; i++){
 		if(i % byteWidth == 0){
 			outfile << "\n";}
 		outfile << bestChars[i];}
-	outfile.close();}
+	outfile.close();
+	compPart.clear();
+	}
 
+void textifyDirectory(){
+	DIR *pdir = NULL;
+	pdir = opendir("./in");
+	struct dirent *pent = NULL;
+	if(pdir == NULL)
+	{
+		cout << "\nERROR! pdir could not be initilized correctly";
+		exit(3);
+	}
+	int counter = 0;
+	while(pent = readdir(pdir))
+	{
+//		cout<<"Here"<<endl;
+		if(pent == NULL)
+		{
+			cout << "\nERROR!  pent could not be intialized correctly";
+			exit(3);
+		}
+//		cout<<"Here B"<<endl;
+		if(pent->d_type == isFile)
+		{
+//			cout<<"Here C"<<endl;
+			const std::string filename = std::string(pent->d_name);
+			const std::string filepath = "in/" + filename;
+//			cout << filepath<<endl;
+			cout<<filename<<endl;
+			if(filename.substr(filename.find_last_of(".")) == ".png")
+			{
+//				char fpath[filepath.size() + 1];
+//				fpath[filepath.size()] = 0;
+//				memcpy(fpath,filepath.c_str(), filepath.size());
+//				cout<<fpath;
+//				CImg<unsigned char> imag = new CImg<unsigned char>(filepath.c_str());
+				CImg<unsigned char> img(filepath.c_str());
+//				img.assign(width, height, 1, 3);
+				img.load(filepath.c_str());
+//				cout<<filepath.c_str()<<img.data()[2]<<endl;
+
+				std::string outpic = "out/" + filename;
+//				img.save(outpic.c_str());
+				std::string outfile = "out/" + filename.substr(0,filename.find_last_of(".")) + ".txt";
+//				char opath[outfile.size() + 1];
+//				opath[outfile.size()] = 0;
+//				memcpy(opath, outfile.c_str(), outfile.size());
+				textify(img.data(), outfile.c_str());
+				counter++;
+				cout << outfile.c_str() << " converted, with "<< counter << " files made."<<endl;
+				img.clear();
+			}
+		}
+	}
+	closedir(pdir);
+}
+
+void printDirectoryFiles(){
+	DIR *pdir = NULL;
+	pdir = opendir("./in");
+	struct dirent *pent = NULL;
+	if(pdir == NULL)
+	{
+		cout << "\nERROR! pdir could not be initilized correctly";
+		exit(3);
+	}
+	while(pent = readdir(pdir))
+	{
+		if(pent == NULL)
+		{
+			cout << "\nERROR!  pent could not be intialized correctly";
+			exit(3);
+		}
+		if(pent->d_type == isFile)
+		{
+			std::string filename = std::string(pent->d_name);
+			std::string filepath = "./in/" + filename;
+
+			cout << filepath<< "was finshed" <<endl;
+//			if(pent->d_name.substr(pent->d_name.find_last_of(".")) == ".jpg"){
+//				cout<<" Is a Picture File" << endl;
+//			}
+		}
+	}
+}
 
 int main()
 {
 
 //	CImg<unsigned char> img(640,400,1,3); // Define a 640x400 color image with 8 bits per color component.
 //	unsigned char *texts = textify(img.data());
-	for(int i = 0; i < 100; i++){
-		CImg<unsigned char> img("in/result.jpg");
-		init(img.width(), img.height());
-		textify(img.data());
-	}
+//	for(int i = 0; i < 100; i++){
+//	std::string name;
+//	cout << "File: ";
+//	std::getline(cin, name);
+//	cout<<"Here!";
+	std::string name = "in/00000001.png";
+	CImg<unsigned char> img(name.c_str());
+	init(img.width(), img.height());
+//	textify(img.data(), "out/test4.txt");
+//	img.clear();
+//	img.load("in/00000264.png");
+//	textify(img.data(), "out/test_3.txt");
+//	cout<<"./in/00000001.png"<<img.data();
+//	cout<<"Here!";
+//	~img;
+	textifyDirectory();
+//	}
+//	textifyDirectory();
 //	unsigned char purple[] = { 255,0,255 }; // Define a purple color
 //	img.draw_text(100,100,"Hello World",purple); // Draw a purple "Hello world" at coordinates (100,100).
 //	img.display("My first CImg code"); // Display the image in a display window.
