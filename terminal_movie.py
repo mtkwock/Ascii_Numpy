@@ -32,7 +32,7 @@ def get_name(num):
 	return directory + ((8-len(n)) * "0" + n + ".txt")
 
 if(end == -1):
-	count = 1
+	count = start;
 	while(isfile(get_name(count))):
 		f = open(get_name(count))
 		os.system("clear")
