@@ -44,6 +44,8 @@ ENTER COMMANDS IN THIS ORDER
 youtube-dl <URL>
 ffmpeg -i <VIDEO> -ab 128k -ac 2 -ar 44100 -vn ./out/SOUND.mp4
 ffmpeg -ss 00:00:00 -t HR:MIN:S.cS -i <VIDEO> -r 30.0 ./in/%8d.jpg
+OR ffmpeg -i <VIDEO> -r 30.0 ./in/%8d.png
+
 rm <VIDEO>
 gimp -i -b '(edge-batch "./in/*.jpg" THRESHHOLD 255)' -b '(gimp-quit 0)'
 python batch.py

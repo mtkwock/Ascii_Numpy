@@ -47,12 +47,10 @@ int main()
 	int thresh;
 	cout<<"Picture: ";
 	std::getline(cin,initializer);
-	cout<<endl<<"Threshold Value: ";
+	cout<<endl<<"Threshold Value: "; //50 for cartoons seems to work.  need to check more
 	cin>>thresh;
 	CImg<unsigned char> img(initializer.c_str());
 	init(img.width(), img.height());
-//	img.laplacian();
-
 	CImg<unsigned char> gray(width, height, 1, 1);
 	for(int i = 0; i < width; i++){
 		for(int j = 0; j < height; j++){

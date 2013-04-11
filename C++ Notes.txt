@@ -1,0 +1,108 @@
+Notes FROM FIRST ITERATION OF C++ CODE:
+
+ASSUMING BIG ENDIAN (Large values of bytes accounted for in the FIRST ROWS)
+
+Decompose picture into 1 dimensional array:
+
+Use Kernel {1, 1, 1, 1, -8, 1, 1, 1, 1} as a Laplacian against the picture's RGB values, proceeding to eliminate any colors that exist at the same time by summing and dividing by 3.
+
+<http://stackoverflow.com/questions/7449596/implement-laplacian-3x3>
+
+> Yields 1 dimensional array of length (width * height) filled with values between 0 and 255.
+
+iterate through the array to make it 0's and 1's:
+
+
+const int length = width * height;
+
+Decompose picture into a single array of length w * h filled with 1's or 0's representing white or black pixels.
+
+const byteWidth = (width + 1) / 9  //Accounts for the elimination of every 9thunsigned char(index 8), assuming the last value is left unaccounted for at all times  Rounds down in total number of bytes  (61 pixels wide translates to a width of 6 bytes)
+
+const byteHeight = ((height + 2)<<3) / 9 //The 17th and 18th row of every 18 is being eliminated.  This is the equivalent of multiplying by 16 and dividing by 18.  [indices 16 and 17 are not accounted for]  Rounds down in total number of bytes
+
+const int byteLength = byteWidth * byteHeight;
+
+byte byteImage[] = new byte[byteLength]; //The bytes which represent the image
+int workingIndex = 0;
+int byte_index = 0; //Whichunsigned charit's working on
+const horLimit = byte_width * 9;
+
+while(workingIndex <= length){
+	if(workingIndex % width >= horLimit){
+		workingIndex = (workingIndex + 8) / width * width//Goes to next row
+		byteIndex++;
+		if(workingIndex / width % 18 == 16){ //Skips two lines <-> it is the end of the character line
+			workingIndex+= 2*width;
+		}
+	}
+	else if(workingIndex % width % 9 == 8){
+		byteIndex++;
+		workingIndex++;
+	}
+	byteImage[byteIndex]<<1+=(pix[workingIndex]>>7);
+	workingIndex++;
+} //The byteImage is now fully completed and
+
+characters stored as the following:
+constunsigned charchars[][] = new byte[95][16]
+
+constunsigned chara[] = new byte[16]
+a[ 0] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 1] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 2] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 3] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 4] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[ 5] =unsigned char= [0][0][1][1][1][1][1][0] = 00111110 =  62
+a[ 6] =unsigned char= [0][0][0][0][0][1][1][1] = 00000111 =   7
+a[ 7] =unsigned char= [0][0][0][0][0][0][1][1] = 00111111 =  63
+a[ 8] =unsigned char= [0][0][1][1][1][1][1][1] = 01110111 = 120
+a[ 9] =unsigned char= [0][1][1][1][0][1][1][1] = 01100011 = 102
+a[10] =unsigned char= [0][1][1][0][0][0][1][1] = 01110111 = 120
+a[11] =unsigned char= [0][1][1][1][0][1][1][1] = 00111111 =  63
+a[12] =unsigned char= [0][0][1][1][1][1][1][1] = 00000000 =   0
+a[13] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[14] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+a[15] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
+
+
+Should report:
+124 124 124 124
+	int test[] = {	0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
+					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
+					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
+					0, 0, 0, 0, 0, 0,  0, 0, 0,0, 0, 0, 0, 0, 0, 0,  0, 0, 0,0,
+					0, 0, 0, 0, 0, 0,  0, 0, 0,0, 0, 0, 0, 0, 0, 0,  0, 0, 0,0
+					};
+//	textify(test);

@@ -5,32 +5,31 @@
 #include <istream>
 #include <vector>
 #include <dirent.h>
-//#define cimg_use_jpeg 1
+#define cimg_use_jpeg 1
 #define cimg_use_png 1
+#define thresh 50 //Universal Threshold of 50
 using namespace cimg_library;
 using std::cout;
 using std::cin;
 using std::endl;
 /*
-REQUIRED INSTALLS:
-sudo apt-get install imagemagick
-sudo apt-get intall cimg-dev
+	REQUIRED INSTALLS:
+	sudo apt-get install imagemagick
+	sudo apt-get intall cimg-dev
 
-HOW TO COMPILE:
-g++ -o textify.exe textify.cpp -O2 -L/usr/X11R6/lib -lm -lpthread -lX11
+	HOW TO COMPILE:
+	g++ -o textify.exe textify.cpp -O2 -L/usr/X11R6/lib -lm -lpthread -lX11
 
-HOW TO USE:
-./textify.exe
+	HOW TO USE:
+	./textify.exe
 
-9020 Frames:  Kiss_Me.mp4
-real	22m59.587s
-user	18m15.048s
-sys	3m40.850s
-
+	9020 Frames:  Kiss_Me.mp4
+	real	22m59.587s
+	user	18m15.048s
+	sys	3m40.850s
 */
 
-//GLOBALVARIABLES
-//Initiated in init(w, h)
+//GLOBALVARIABLES Initiated in init(w, h)
 int width;
 int height;
 unsigned long length = width * height;
@@ -43,8 +42,11 @@ unsigned long byteLength;
 
 bool toTerminal;
 
+//Value returned if an item in a directory is a FILE, used to CHECK
 const unsigned char isFile = 0x8;
 
+//Counts the BRIGHTNESS of bytes.  Each one is linked with the equivalent value in binary, storing the NUMBER OF 1'S in each binary representation
+//Ranges from 0 to 255 (2^0 -1 to 2^8 -1 AKA 00000000 to 11111111)
 const int bitTable[] = {
 	0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 
 	1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
@@ -62,6 +64,13 @@ const int bitTable[] = {
 	3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
 	3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
 	4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8};
+
+//Character Byte information.  Smallest way we can store the values of the pixels of characters.
+//Some still need to be fixed.
+/*
+	Characters that need to be redone:
+	M, W,?,f,H,r,t,U,w,5,7,>,]
+*/
 
 const unsigned char chars[][16] = {
 	{ 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0}, //  (32) 
@@ -160,6 +169,7 @@ const unsigned char chars[][16] = {
 	{ 0x0,  0x0, 0x78, 0x1c,  0xc,  0xc,  0xc,  0xc,  0xf,  0xc,  0xc,  0xc,  0xc,  0xc, 0x1c, 0x78}, //} (125) 
 	{ 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0, 0x7b, 0xde,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0}}; //~ (126) FIXED
 
+//This brightness is currently unused.  Will be needed to be added later for BRIGHTNESS comparison
 const unsigned char chBright[95] = {
 	0,24,16,51,45,53,55,11,34,33,
 	24,22,14, 5, 8,33,56,30,37,38,
@@ -171,13 +181,9 @@ const unsigned char chBright[95] = {
 	38,56,45,28,37,46,28,46,37,40,
 	45,49,27,33,37,36,35,47,34,43,
 	30,34,28,36,12};
-/*
-Characters that need to be redone:
-M, W,?,f,H,r,t,U,w,5,7,>,]
-*/
 //ENDGLOBAL//
 
-
+//Initializes variables used for MASS USAGE only once.  MUST be called before working on a picture of possibly different size.
 void init(int w, int h){
 	::width = w;
 	::height = h;
@@ -191,7 +197,7 @@ void init(int w, int h){
 
 	::byteLength = (long)byteWidth * (long)byteHeight;}
 
-
+//Takes an EDGE-DETECTED IMAGE, converts it to an ASCII version and saves it in the filename given as an argument
 void textify(unsigned char pix[], const char* filename){
 	unsigned char byteImage[byteLength];
 	int workingIndex = 0;
@@ -262,6 +268,8 @@ void textify(unsigned char pix[], const char* filename){
 	outfile.close();
 	compPart.clear();}
 
+//Takes an EDGE-DETECTED IMAGE, converts it to an ASCII version, and prints it out in the terminal.
+//Mainly used for TESTING purposes.  REQUIRES AN INPUT before it outputs in order to make sure that the user can SEE THE OUTPUT
 void textifyToTerminal(unsigned char pix[]){
 	unsigned char byteImage[byteLength];
 	int workingIndex = 0;
@@ -324,7 +332,6 @@ void textifyToTerminal(unsigned char pix[]){
 
 	//Takes the values and prints the equivalent version to a .txt file.
 	std::string temp;
-	cout<<"HERE";
 	std::getline(cin, temp);
 	for(int i = 0; i < byteLength / 16; i++){
 		if(i % byteWidth == 0){
@@ -333,6 +340,9 @@ void textifyToTerminal(unsigned char pix[]){
 	cout<<endl;
 	compPart.clear();}
 
+//Takes ALL PNG IMAGES from the IN folder and outputs text files to the OUT if options suggest.
+//Testing mode calls textifyToTerminal for DEBUGGING and general TESTING
+//REQUIRES Directory in/ and out/ to exist in the same folder as the .exe
 void textifyDirectory(){
 	DIR *pdir = NULL;
 	pdir = opendir("./in");
@@ -348,176 +358,82 @@ void textifyDirectory(){
 		if(pent->d_type == isFile){
 			const std::string filename = std::string(pent->d_name);
 			const std::string filepath = "in/" + filename;
-			if(filename.substr(filename.find_last_of(".")) == ".png"){
-				CImg<unsigned char> img(filepath.c_str());
-				img.load(filepath.c_str());
+			//ONLY WORKS WITH .png and .jpg FILES, can be done with others, but needs to be enabled BEFOREHAND
+			if(filename.substr(filename.find_last_of(".")) == ".png" || filename.substr(filename.find_last_of(".")) == ".jpg"){
 				std::string outpic = "out/" + filename;
 				std::string outfile = "out/" + filename.substr(0,filename.find_last_of(".")) + ".txt";
+
+				//Creates the Gray Laplacian Image to be used.  Change the threshold value in GLOBAL VARIABLES to modify the threshold.
+				CImg<unsigned char> img(filepath.c_str());
+				CImg<unsigned char> gray(width, height, 1, 1);
+				for(int i = 0; i < width; i++){
+					for(int j = 0; j < height; j++){
+						unsigned char val = 0;
+						unsigned char red = img(i, j, 0, 0);
+						unsigned char grn = img(i, j, 0, 1);
+						unsigned char blu = img(i, j, 0, 2);
+
+						val = round(0.299 * (double)red + 0.587 * (double)grn + 0.114 * (double)blu);
+						gray(i, j, 0, 0) = val;}}
+				gray.threshold(thresh);
+				gray.laplacian();
+
 				if(toTerminal){
-					textifyToTerminal(img.data());
-					cout<<endl;
-				}
+					textifyToTerminal(gray.data());
+					cout<<endl;}
 				else{
-					textify(img.data(), outfile.c_str());
-				}
+					textify(gray.data(), outfile.c_str());}
 				counter++;
 				cout << outfile.c_str() << " converted, with "<< counter << " files made."<<endl;
 				img.clear();}}}
 	closedir(pdir);}
 
-int main()
-{
+//Currently a basic text menu.  Has a SINGLE IMAGE version along with MODIFY DIRECTORY version
+int main(){
 	cout<<"What do you want to do?"<<endl<<"1: Textify an image (Default)"<<endl<<"2: Textify the in/ directory"<<endl;
-
 	std::string input;
 	std::getline(cin, input);
+
+	//If "2" is the first value in the inputted string, then DIRECTORY mode is activated.
+	//Not default option due to huge dependency issues on the user's setup.
+	//Will need to add documentation later and a better GUI
 	if(input[0] == '2'){
 		std::string initializer = "in/00000001.png";
 		CImg<unsigned char> img(initializer.c_str());
 		init(img.width(), img.height());
-		std::string terminalPrint;
 		cout<<"Do you want to print to terminal?  [y|N]"<<endl;
-
 		std::getline(cin, input);
-		if(input[0] == 'y'){
-			::toTerminal = true;}
-		if(toTerminal){
-			cout<<"True"<<endl;
-		}
-		else{
-			cout<<"False"<<endl;
-		}
-		textifyDirectory();
-	}
+		if(input[0] == 'y') {::toTerminal = true;}
+		else {::toTerminal = false;}
+		textifyDirectory();}
+
 	else{
 		std::string picName;
 		cout<<"Picture Name: ";
 		while(std::getline(cin,picName)){
-			CImg<unsigned char> beginPic(picName.c_str());
-			init(beginPic.width(), beginPic.height());
-			textify(beginPic.data(), "media/textified.txt");
-			cout<<picName<< " was converted to media/textified.txt";
-			cout<<"Picture Name: ";
-		}
-	}
-
-
-//	unsigned char purple[] = { 255,0,255 }; // Define a purple color
-//	img.draw_text(100,100,"Hello World",purple); // Draw a purple "Hello world" at coordinates (100,100).
-//	img.display("My first CImg code"); // Display the image in a display window.
-	return 0;
-}
-
-/*
-Notes:
-
-ASSUMING BIG ENDIAN (Large values of bytes accounted for in the FIRST ROWS)
-
-Decompose picture into 1 dimensional array:
-
-Use Kernel {1, 1, 1, 1, -8, 1, 1, 1, 1} as a Laplacian against the picture's RGB values, proceeding to eliminate any colors that exist at the same time by summing and dividing by 3.
-
-<http://stackoverflow.com/questions/7449596/implement-laplacian-3x3>
-
-> Yields 1 dimensional array of length (width * height) filled with values between 0 and 255.
-
-iterate through the array to make it 0's and 1's:
-
-
-
-
-
-const int length = width * height;
-
-Decompose picture into a single array of length w * h filled with 1's or 0's representing white or black pixels.
-
-const byteWidth = (width + 1) / 9  //Accounts for the elimination of every 9thunsigned char(index 8), assuming the last value is left unaccounted for at all times  Rounds down in total number of bytes  (61 pixels wide translates to a width of 6 bytes)
-
-const byteHeight = ((height + 2)<<3) / 9 //The 17th and 18th row of every 18 is being eliminated.  This is the equivalent of multiplying by 16 and dividing by 18.  [indices 16 and 17 are not accounted for]  Rounds down in total number of bytes
-
-const int byteLength = byteWidth * byteHeight;
-
-byte byteImage[] = new byte[byteLength]; //The bytes which represent the image
-int workingIndex = 0;
-int byte_index = 0; //Whichunsigned charit's working on
-const horLimit = byte_width * 9;
-
-while(workingIndex <= length){
-	if(workingIndex % width >= horLimit){
-		workingIndex = (workingIndex + 8) / width * width//Goes to next row
-		byteIndex++;
-		if(workingIndex / width % 18 == 16){ //Skips two lines <-> it is the end of the character line
-			workingIndex+= 2*width;
-		}
-	}
-	else if(workingIndex % width % 9 == 8){
-		byteIndex++;
-		workingIndex++;
-	}
-	byteImage[byteIndex]<<1+=(pix[workingIndex]>>7);
-	workingIndex++;
-} //The byteImage is now fully completed and
-
-characters stored as the following:
-constunsigned charchars[][] = new byte[95][16]
-
-constunsigned chara[] = new byte[16]
-a[ 0] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 1] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 2] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 3] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 4] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[ 5] =unsigned char= [0][0][1][1][1][1][1][0] = 00111110 =  62
-a[ 6] =unsigned char= [0][0][0][0][0][1][1][1] = 00000111 =   7
-a[ 7] =unsigned char= [0][0][0][0][0][0][1][1] = 00111111 =  63
-a[ 8] =unsigned char= [0][0][1][1][1][1][1][1] = 01110111 = 120
-a[ 9] =unsigned char= [0][1][1][1][0][1][1][1] = 01100011 = 102
-a[10] =unsigned char= [0][1][1][0][0][0][1][1] = 01110111 = 120
-a[11] =unsigned char= [0][1][1][1][0][1][1][1] = 00111111 =  63
-a[12] =unsigned char= [0][0][1][1][1][1][1][1] = 00000000 =   0
-a[13] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[14] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
-a[15] =unsigned char= [0][0][0][0][0][0][0][0] = 00000000 =   0
-
-
-Should report:
-124 124 124 124
-	int test[] = {	0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
-					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
-					0, 0, 0,   0,   0, 0, 0, 0,0, 0, 0, 0,   0,   0, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 255, 255, 0, 0, 0,0, 0, 0, 0, 255, 255, 0, 0, 0,0,
-					0, 0, 0, 0, 0, 0,  0, 0, 0,0, 0, 0, 0, 0, 0, 0,  0, 0, 0,0,
-					0, 0, 0, 0, 0, 0,  0, 0, 0,0, 0, 0, 0, 0, 0, 0,  0, 0, 0,0
-					};
-//	textify(test);
-*/
+			CImg<unsigned char> img(picName.c_str());
+			init(pic.width(), pic.height());
+			CImg<unsigned char> gray(width, height, 1, 1);
+			for(int i = 0; i < width; i++){
+				for(int j = 0; j < height; j++){
+					unsigned char val = 0;
+					unsigned char red = img(i, j, 0, 0);
+					unsigned char grn = img(i, j, 0, 1);
+					unsigned char blu = img(i, j, 0, 2);
+					val = round(0.299 * (double)red + 0.587 * (double)grn + 0.114 * (double)blu);
+					gray(i, j, 0, 0) = val;}}
+			gray.threshold(thresh);
+			gray.laplacian();
+			cout<<"Do you want to print to terminal?  [y|N]"<<endl;
+			std::getline(cin, input);
+			if(input[0] == 'y'){::toTerminal = true;}
+			else{::toTerminal = false;}
+			if(toTerminal) {textifyToTerminal(gray.data());}
+			else {textify(gray.data(), "media/textified.txt");}
+			cout<<picName<< " was converted";
+			cout<<"Picture Name: ";}}
+	//STILL NEED THE FOLLOWING CODE FOR LATER USE
+	//unsigned char white[] = { 255,255,255 };
+	//img.draw_text(100,100,"Hello World",purple); // Draw a purple "Hello world" at coordinates (100,100).
+	//img.display("My first CImg code"); // Display the image in a display window.
+	return 0;}
