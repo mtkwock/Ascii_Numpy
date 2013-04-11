@@ -9,7 +9,7 @@ def imagify(filename):
 #		return
 	f = open(filename)
 	l = f.readlines()
-	img = Image.new("L", (len(l[0]) * 9, len(l) * 18), "black")
+	img = Image.new("L", (len(l[1]) * 9, len(l) * 18), "black")
 	draw = ImageDraw.Draw(img)
 	y = 1
 	for line in l:
@@ -20,13 +20,13 @@ def imagify(filename):
 			x = x + 9
 		y = y + 1
 
-	img.show()
+#	img.show()
 	save = "." + filename.split('.')[1] + ".jpg"
 	print save
 	img.save(save)
 
 def imagify_all():
-	for i in range(1,6811):
+	for i in range(1,16000):
 		num = str(i)
 		zeros = (8 - len(num)) * "0"
 		name = "./out/" + zeros + num + ".txt"

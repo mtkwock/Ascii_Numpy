@@ -58,6 +58,27 @@ ffmpeg -i SOUND.mp4 -i video.avi -acodec copy -vcodec copy dir/<FINALVIDEONAME>
 rm SOUND.mp4
 rm *.jpg
 
+
+
+(1926 x 1098)
+
+TIME FOR CASCADE:
+
+Video --> Pic [ffmpeg] / Sound [ffmpeg]
+0.5 sec / frame
+
+Pic --> Ascii [textify.exe]
+60 sec / 53 frames
+
+Ascii --> Pic [txt_to_py]
+0.6 sec / frame
+
+Pic --> Video [MENCODER]
+1 sec / 6.6 frames
+
+TOTAL for 12400 frames:
+2.38 s / frame
+
 	**************************
 	*****Explained steps:*****
 	**************************

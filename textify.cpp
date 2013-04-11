@@ -218,7 +218,7 @@ void textify(unsigned char pix[], const char* filename){
 
 	unsigned char bestChars[byteLength/16];
 
-	//Eliminates pixels under certain brightness threshholds and estimates it to a space
+	//Eliminates pixels under certain brightness threshholds and estimates it to a space. 
 	for(int i = 0; i < byteLength/16; i++){  
 		char brightness = 0;
 		int hTrans = i / (byteWidth) * byteWidth * 16 + i % byteWidth;
