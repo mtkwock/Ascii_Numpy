@@ -3,11 +3,13 @@
 #include "CImg.h"
 #include <fstream>
 #include <istream>
+#include <sstream>
 #include <vector>
 #include <dirent.h>
 #define cimg_use_jpeg 1
+#define cimg_use_jpg 1
 #define cimg_use_png 1
-#define thresh 50 //Universal Threshold of 50
+#define thresh 50 //Universal Threshold of 50.  CHANGE FOR DIFFERENT VALUES.  Still unsure how to define well.
 using namespace cimg_library;
 using std::cout;
 using std::cin;
@@ -171,7 +173,7 @@ const unsigned char chars[][16] = {
 
 //This brightness is currently unused.  Will be needed to be added later for BRIGHTNESS comparison
 const unsigned char chBright[95] = {
-	0,24,16,51,45,53,55,11,34,33,
+	0 ,24,16,51,45,53,55,11,34,33,
 	24,22,14, 5, 8,33,56,30,37,38,
 	37,36,45,30,51,44,16,20,24,16,
 	22,24,72,46,50,36,46,37,32,42,
@@ -181,6 +183,14 @@ const unsigned char chBright[95] = {
 	38,56,45,28,37,46,28,46,37,40,
 	45,49,27,33,37,36,35,47,34,43,
 	30,34,28,36,12};
+
+std::string grads = "      ......''`^^,::!>><~~+--?||trrxnnucczmmwqqpbhao******######";
+
+const int gradient_length = 64;
+
+const unsigned char *gradient = (unsigned char*)grads.c_str();
+
+CImgList<unsigned char> chPics(95);
 //ENDGLOBAL//
 
 //Initializes variables used for MASS USAGE only once.  MUST be called before working on a picture of possibly different size.
@@ -191,9 +201,9 @@ void init(int w, int h){
 
 	::byteWidth = (width + 1) / 9;
 	::byteHeight = ((height/18)<<4);
-	::hLim = byteWidth * 9 - 1;
 	if(height % 18 >= 16){ byteHeight+= 16;}
-	else{byteHeight+= height%18;}
+	//else{byteHeight+= height%18;}
+	::hLim = byteWidth * 9 - 1;
 
 	::byteLength = (long)byteWidth * (long)byteHeight;}
 
@@ -267,6 +277,193 @@ void textify(unsigned char pix[], const char* filename){
 		outfile << bestChars[i];}
 	outfile.close();
 	compPart.clear();}
+
+
+//Takes an EDGE-DETECTED IMAGE, converts it to an ASCII version and saves it in the filename given as an argument
+void textify2(unsigned char pix[], const char* filename){
+	unsigned char byteImage[byteLength];
+	int workingIndex = 0;
+	int byteIndex = 0;
+	
+	//Converts Picture into byte format, ignoring every ninth column and every 17/18th row.  Black = 0, White = 1
+	while(workingIndex < length){ 
+		byteImage[byteIndex] = byteImage[byteIndex] * 2 + (pix[workingIndex]>>7);
+		workingIndex++;
+		if((workingIndex - 1) % width + 1>= hLim){
+			workingIndex = (workingIndex + 7) / width * width;
+			byteIndex++;
+			if(workingIndex / width % 18 == 16){
+				workingIndex+= 2*width;}}
+		else if(workingIndex % width % 9 == 8){
+			byteIndex++;
+			workingIndex++;}}
+
+	unsigned char bestChars[byteLength/16];
+
+	//Eliminates pixels under certain brightness threshholds and estimates it to a space. 
+	for(int i = 0; i < byteLength/16; i++){  
+		char brightness = 0;
+		int hTrans = i / (byteWidth) * byteWidth * 16 + i % byteWidth;
+		for(int part = 0; part < 16; part++){
+			brightness += bitTable[byteImage[hTrans + part * byteWidth]];}
+		if((int)brightness <= 4){
+			bestChars[i] = 0x10;}}
+
+	byteIndex = 0;
+	std::vector< std::vector<int> > compPart;
+	compPart.resize(95, std::vector<int> (byteLength, 0));
+
+	//Compares every byte portion to an equivalent position in a character byte set, still a set of 16 byte comparisons
+	while(byteIndex != byteLength){ 
+		if(bestChars[byteIndex / (16 * byteWidth) * byteWidth + byteIndex % byteWidth != 0x10]){
+			for(int charNum = 0; charNum < 95; charNum++){
+				compPart[charNum][byteIndex] = byteImage[byteIndex] ^ chars[charNum][(byteIndex / byteWidth) & 15];}}
+		byteIndex++;}
+
+	byteIndex = 0;
+
+	//Uses the information gathered from the previous two step in order to find the best characters for each slot.
+	while(byteIndex != byteWidth){
+		int vertPos = 0;
+		while(vertPos != byteHeight){
+			if(bestChars[vertPos/16 * byteWidth + byteIndex] !=0x10){
+				int lowest = 0xff;
+				for(int charNum = 0x1; charNum != 0x5f; charNum++){
+					int charComp = 0;
+					for(int vertOff = 0; vertOff != 16; vertOff++){
+						charComp += bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];}
+					if(charComp < lowest){
+						lowest = charComp;
+						bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);}}}
+			else{
+				bestChars[vertPos/16 * byteWidth + byteIndex] = 0x20;}
+			vertPos+=16;}
+		byteIndex++;}
+
+	CImg<unsigned char> endPic(width, height, 1, 1, 0);
+	unsigned char white[] = {255, 255, 255};
+	unsigned char black[] = {0, 0, 0};
+	for(int i = 0; i < byteLength / 16; i++){
+		int xVal = (i % byteWidth) * 9;
+		int yVal = i / byteWidth * 18;
+		endPic.draw_image(xVal, yVal, 0, 0, ::chPics[bestChars[i] - 0x20], 1);//, black, 1, 13);
+	}
+	endPic.save("media/textified.png");
+	compPart.clear();}
+
+//Takes an EDGE-DETECTED IMAGE and a similar SMALLER IMAGE to make a hybrid.
+void textifySmart(unsigned char *grad, unsigned char *pix, const char* filename){
+	unsigned char byteImage[byteLength];
+	int workingIndex = 0;
+	int byteIndex = 0;
+	
+	//Converts Picture into byte format, ignoring every ninth column and every 17/18th row.  Black = 0, White = 1
+	while(workingIndex < length){ 
+		byteImage[byteIndex] = byteImage[byteIndex] * 2 + (pix[workingIndex]/128);
+		workingIndex++;
+		if((workingIndex - 1) % width + 1>= hLim){
+			workingIndex = (workingIndex + 7) / width * width;
+			byteIndex++;
+			if(workingIndex / width % 18 == 16){
+				workingIndex+= 2*width;}}
+		else if(workingIndex % width % 9 == 8){
+			byteIndex++;
+			workingIndex++;}}
+
+	unsigned char bestChars[byteLength/16];
+
+	//Eliminates pixels under certain brightness threshholds and estimates it to a space. 
+	for(int i = 0; i < byteLength/16; i++){  
+		char brightness = 0;
+		int hTrans = i / (byteWidth) * byteWidth * 16 + i % byteWidth;
+		for(int part = 0; part < 16; part++){
+			brightness += bitTable[byteImage[hTrans + part * byteWidth]];}
+		if((int)brightness <= 4){
+			bestChars[i] = 0x10;}}
+
+	byteIndex = 0;
+	std::vector< std::vector<int> > compPart;
+	compPart.resize(95, std::vector<int> (byteLength, 0));
+
+	//Compares every byte portion to an equivalent position in a character byte set, still a set of 16 byte comparisons
+	while(byteIndex != byteLength){ 
+		if(bestChars[byteIndex / (16 * byteWidth) * byteWidth + byteIndex % byteWidth != 0x10]){
+			for(int charNum = 0; charNum < 95; charNum++){
+				compPart[charNum][byteIndex] = byteImage[byteIndex] ^ chars[charNum][(byteIndex / byteWidth) & 15];}}
+		byteIndex++;}
+
+	byteIndex = 0;
+
+	//Uses the information gathered from the previous two step in order to find the best characters for each slot.
+	//cout<<"A";
+	while(byteIndex != byteWidth)
+	{
+		//cout<<"B";
+		int vertPos = 0;
+		while(vertPos != byteHeight)
+		{
+			//cout<<"C";
+			if(bestChars[vertPos/16 * byteWidth + byteIndex] !=0x10)
+			{
+				int lowest = 0xff;
+				for(int charNum = 0x1; charNum != 0x5f; charNum++)
+				{
+					//cout<<"D";
+					int charComp = 0;
+					for(int vertOff = 0; vertOff != 16; vertOff++)
+					{
+						charComp += bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];
+					}
+
+					//cout<<"D2";
+
+					if(charComp < lowest)
+					{
+						lowest = charComp;
+						bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);
+					}
+					//cout<<"D3";
+				}
+			}
+			else
+			{
+			//cout<<"C2";
+				bestChars[vertPos/16 * byteWidth + byteIndex] = 0x20;
+			}
+			vertPos+=16;
+		}
+		byteIndex++;
+	}
+
+	//cout<<"Got Here"<<endl;
+
+	CImg<unsigned char> endPic(width, height, 1, 1);
+
+	//unsigned char white[] = {255, 255, 255};
+	//unsigned char black[] = {0, 0, 0};
+	for(int i = 0; i < byteLength / 16; i++)
+	{
+		int xVal = (i % byteWidth) * 9;
+		int yVal = i / byteWidth * 18;
+		if(bestChars[i] > 0x20)
+		{
+			endPic.draw_image(xVal, yVal, 0, 0, ::chPics[bestChars[i] - 0x20], 1);
+		}
+		else
+		{
+			//cout<<"4a"<<endl;
+			//cout<<i<<endl;
+			//cout<<(int)grad[i+1]<<" ";
+			//cout<<gradient[grad.at(i)]<<" "<<endl;
+			//cout<<"4b"<<endl;
+			endPic.draw_image(xVal, yVal, 0, 0, ::chPics[gradient[(int)grad[i]/4] - 0x20], 0.4);
+			//cout<<"4c"<<endl;
+		}
+	}
+	endPic.save(filename);
+	//cout<<"Almost"<<endl;
+	~endPic;
+}
 
 //Takes an EDGE-DETECTED IMAGE, converts it to an ASCII version, and prints it out in the terminal.
 //Mainly used for TESTING purposes.  REQUIRES AN INPUT before it outputs in order to make sure that the user can SEE THE OUTPUT
@@ -361,11 +558,12 @@ void textifyDirectory(){
 			//ONLY WORKS WITH .png and .jpg FILES, can be done with others, but needs to be enabled BEFOREHAND
 			if(filename.substr(filename.find_last_of(".")) == ".png" || filename.substr(filename.find_last_of(".")) == ".jpg"){
 				std::string outpic = "out/" + filename;
-				std::string outfile = "out/" + filename.substr(0,filename.find_last_of(".")) + ".txt";
+				std::string outfile = "out/" + filename.substr(0,filename.find_last_of(".")) + ".png";
 
 				//Creates the Gray Laplacian Image to be used.  Change the threshold value in GLOBAL VARIABLES to modify the threshold.
 				CImg<unsigned char> img(filepath.c_str());
 				CImg<unsigned char> gray(width, height, 1, 1);
+				CImg<unsigned char> scaled(width, height, 1, 1);
 				for(int i = 0; i < width; i++){
 					for(int j = 0; j < height; j++){
 						unsigned char val = 0;
@@ -374,15 +572,22 @@ void textifyDirectory(){
 						unsigned char blu = img(i, j, 0, 2);
 
 						val = round(0.299 * (double)red + 0.587 * (double)grn + 0.114 * (double)blu);
-						gray(i, j, 0, 0) = val;}}
+						gray(i, j, 0, 0) = val;
+						scaled(i, j, 0, 0) = val;}}
+				gray.normalize(0, 255);
 				gray.threshold(thresh);
 				gray.laplacian();
+
+				scaled.resize(byteWidth, byteHeight/16);
+				scaled.normalize(0, 255);
+
+				//cout<<"Starting new File"<<endl;
 
 				if(toTerminal){
 					textifyToTerminal(gray.data());
 					cout<<endl;}
 				else{
-					textify(gray.data(), outfile.c_str());}
+					textifySmart(scaled.data(), gray.data(), outfile.c_str());}
 				counter++;
 				cout << outfile.c_str() << " converted, with "<< counter << " files made."<<endl;
 				img.clear();}}}
@@ -390,8 +595,17 @@ void textifyDirectory(){
 
 //Currently a basic text menu.  Has a SINGLE IMAGE version along with MODIFY DIRECTORY version
 int main(){
-	cout<<"What do you want to do?"<<endl<<"1: Textify an image (Default)"<<endl<<"2: Textify the in/ directory"<<endl;
+	//Initializes the Character pictures used to draw
+	for(int i = 0; i < 95; i++){
+		std::string name;
+		std::stringstream characters;
+		characters <<"chars/"<< i << ".png";
+		name = characters.str();
+		CImg<unsigned char> character(name.c_str());
+		::chPics.insert(character, i);
+	}
 	std::string input;
+	cout<<"What do you want to do?"<<endl<<"1: Textify an image (Default)"<<endl<<"2: Textify the in/ directory"<<endl;
 	std::getline(cin, input);
 
 	//If "2" is the first value in the inputted string, then DIRECTORY mode is activated.
@@ -412,8 +626,9 @@ int main(){
 		cout<<"Picture Name: ";
 		while(std::getline(cin,picName)){
 			CImg<unsigned char> img(picName.c_str());
-			init(pic.width(), pic.height());
+			init(img.width(), img.height());
 			CImg<unsigned char> gray(width, height, 1, 1);
+			CImg<unsigned char> scaled(width, height, 1, 1);
 			for(int i = 0; i < width; i++){
 				for(int j = 0; j < height; j++){
 					unsigned char val = 0;
@@ -421,19 +636,34 @@ int main(){
 					unsigned char grn = img(i, j, 0, 1);
 					unsigned char blu = img(i, j, 0, 2);
 					val = round(0.299 * (double)red + 0.587 * (double)grn + 0.114 * (double)blu);
-					gray(i, j, 0, 0) = val;}}
+					gray(i, j, 0, 0) = val;
+					scaled(i, j, 0, 0) = val;
+				}}
 			gray.threshold(thresh);
 			gray.laplacian();
+
+			gray.save("media/edge.png");
+
+			//scaled.crop(0, 0, 0, width / 9 * 9, height / 18 * 18, 1, 0);
+			scaled.resize(byteWidth, byteHeight / 16);
+			scaled.normalize(0, 255);
+			scaled.save("media/gradient.png");
+			cout<<img.width()<< " " << img.height() << " " << byteWidth << " " << byteHeight << endl;
+
+			cout<<byteLength<<" "<<scaled.size()<<endl;
+
+			//cout<<scaled.value_string();
+
 			cout<<"Do you want to print to terminal?  [y|N]"<<endl;
 			std::getline(cin, input);
 			if(input[0] == 'y'){::toTerminal = true;}
 			else{::toTerminal = false;}
-			if(toTerminal) {textifyToTerminal(gray.data());}
-			else {textify(gray.data(), "media/textified.txt");}
-			cout<<picName<< " was converted";
+			if(toTerminal) {
+				textifyToTerminal(gray.data());}
+			else {
+				textifySmart(scaled.data(), gray.data(), "media/textified.png");
+			}
+			//else {textify(gray.data(), "media/textified.txt");}
+			cout<<"Converted"<<endl;
 			cout<<"Picture Name: ";}}
-	//STILL NEED THE FOLLOWING CODE FOR LATER USE
-	//unsigned char white[] = { 255,255,255 };
-	//img.draw_text(100,100,"Hello World",purple); // Draw a purple "Hello world" at coordinates (100,100).
-	//img.display("My first CImg code"); // Display the image in a display window.
 	return 0;}

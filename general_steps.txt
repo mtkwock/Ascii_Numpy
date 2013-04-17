@@ -53,12 +53,21 @@ rm ./in/*.jpg
 python txt_to_pic.py
 rm ./out/*.txt
 cd out/
-mencoder mf://*.jpg -mf w=1280:h=720:fps=30:type=jpg -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o video.avi
+mencoder mf://*.png -mf w=960:h=720:fps=30:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o video.avi
+
+ffmpeg -f image2 -r 30.0 -i ./%4d.png video.avi
+
 ffmpeg -i SOUND.mp4 -i video.avi -acodec copy -vcodec copy dir/<FINALVIDEONAME>
 rm SOUND.mp4
 rm *.jpg
 
 
+CURRENT:
+ffmpeg -i VIDEO -r 30.0 ./%5d.png
+ffmpeg -i VIDEO -ab 128k -ac 2 -ar 44100 -vn ../out/SOUND.mp4
+./textify [Followed by "2" and Enter-key]
+ffmpeg -f image2 -r 30.0 -i ./%5d.png video.avi
+ffmpeg -i SOUND.mp4 -i video.avi -acodec copy -vcodec copy FINAL.mp4
 
 (1926 x 1098)
 
@@ -78,6 +87,10 @@ Pic --> Video [MENCODER]
 
 TOTAL for 12400 frames:
 2.38 s / frame
+
+Kiss_Me_2
+Video --> Pic
+0.33 sec / Frame
 
 	**************************
 	*****Explained steps:*****
