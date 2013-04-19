@@ -66,7 +66,10 @@ CURRENT:
 ffmpeg -i VIDEO -r 30.0 ./%5d.png
 ffmpeg -i VIDEO -ab 128k -ac 2 -ar 44100 -vn ../out/SOUND.mp4
 ./textify [Followed by "2" and Enter-key]
-ffmpeg -f image2 -r 30.0 -i ./%5d.png video.avi
+ffmpeg -f image2 -r 30.0 -i ./%8d.png video.avi
+
+ffmpeg -r 30 -i %8d.jpg -qscale 3 output.mkv
+
 ffmpeg -i SOUND.mp4 -i video.avi -acodec copy -vcodec copy FINAL.mp4
 
 (1926 x 1098)
@@ -90,7 +93,8 @@ TOTAL for 12400 frames:
 
 Kiss_Me_2
 Video --> Pic
-0.33 sec / Frame
+53 minutes for 8493 frames
+
 
 	**************************
 	*****Explained steps:*****

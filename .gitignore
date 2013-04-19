@@ -1,6 +1,10 @@
 ./in/
 ./out/
 ./media/
+./edgeout/
+./brightout/
 in/
 out/
 media/
+edgeout/
+brightout/

@@ -9,7 +9,7 @@
 #define cimg_use_jpeg 1
 #define cimg_use_jpg 1
 #define cimg_use_png 1
-#define thresh 50 //Universal Threshold of 50.  CHANGE FOR DIFFERENT VALUES.  Still unsure how to define well.
+//#define thresh 50 //Universal Threshold of 50.  CHANGE FOR DIFFERENT VALUES.  Still unsure how to define well.
 using namespace cimg_library;
 using std::cout;
 using std::cin;
@@ -32,6 +32,7 @@ using std::endl;
 */
 
 //GLOBALVARIABLES Initiated in init(w, h)
+int thresh = 50;
 int width;
 int height;
 unsigned long length = width * height;
@@ -207,6 +208,7 @@ void init(int w, int h){
 
 	::byteLength = (long)byteWidth * (long)byteHeight;}
 
+/*
 //Takes an EDGE-DETECTED IMAGE, converts it to an ASCII version and saves it in the filename given as an argument
 void textify(unsigned char pix[], const char* filename){
 	unsigned char byteImage[byteLength];
@@ -371,6 +373,7 @@ void textifySmart(unsigned char *grad, unsigned char *pix, const char* filename)
 			workingIndex++;}}
 
 	unsigned char bestChars[byteLength/16];
+	unsigned char brightnesses[byteLength/16];
 
 	//Eliminates pixels under certain brightness threshholds and estimates it to a space. 
 	for(int i = 0; i < byteLength/16; i++){  
@@ -415,6 +418,123 @@ void textifySmart(unsigned char *grad, unsigned char *pix, const char* filename)
 						charComp += bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];
 					}
 
+					//charComp += abs(chBright[charNum] / 4 - brightnesses[vertPos / 16 * byteWidth + byteIndex]);
+					//cout<<"D2";
+
+					if(charComp < lowest)
+					{
+						lowest = charComp;
+						bestChars[vertPos / 16 * byteWidth + byteIndex] = (char)(charNum + 0x20);
+					}
+					//cout<<"D3";
+				}
+			}
+			else
+			{
+			//cout<<"C2";
+				bestChars[vertPos/16 * byteWidth + byteIndex] = 0x20;
+			}
+			vertPos+=16;
+		}
+		byteIndex++;
+	}
+
+	//cout<<"Got Here"<<endl;
+
+	CImg<unsigned char> endPic(width, height, 1, 1);
+
+	//unsigned char white[] = {255, 255, 255};
+	//unsigned char black[] = {0, 0, 0};
+	for(int i = 0; i < byteLength / 16; i++)
+	{
+		int xVal = (i % byteWidth) * 9;
+		int yVal = i / byteWidth * 18;
+		if(bestChars[i] > 0x20)
+		{
+			endPic.draw_image(xVal, yVal, 0, 0, ::chPics[bestChars[i] - 0x20], 1);
+		}
+		else
+		{
+			//cout<<"4a"<<endl;
+			//cout<<i<<endl;
+			//cout<<(int)grad[i+1]<<" ";
+			//cout<<gradient[grad.at(i)]<<" "<<endl;
+			//cout<<"4b"<<endl;
+			endPic.draw_image(xVal, yVal, 0, 0, ::chPics[gradient[(int)grad[i]/4] - 0x20], 0.4);
+			//cout<<"4c"<<endl;
+		}
+	}
+	endPic.save(filename);
+	//cout<<"Almost"<<endl;
+	~endPic;
+}
+*/
+void textifySmartBright(unsigned char *grad, unsigned char *pix, const char* filename){
+	unsigned char byteImage[byteLength];
+	int workingIndex = 0;
+	int byteIndex = 0;
+	
+	//Converts Picture into byte format, ignoring every ninth column and every 17/18th row.  Black = 0, White = 1
+	while(workingIndex < length){ 
+		byteImage[byteIndex] = byteImage[byteIndex] * 2 + (pix[workingIndex]/128);
+		workingIndex++;
+		if((workingIndex - 1) % width + 1>= hLim){
+			workingIndex = (workingIndex + 7) / width * width;
+			byteIndex++;
+			if(workingIndex / width % 18 == 16){
+				workingIndex+= 2*width;}}
+		else if(workingIndex % width % 9 == 8){
+			byteIndex++;
+			workingIndex++;}}
+
+	unsigned char bestChars[byteLength/16];
+	unsigned char brightnesses[byteLength/16];
+
+	//Eliminates pixels under certain brightness threshholds and estimates it to a space. 
+	for(int i = 0; i < byteLength/16; i++){  
+		char brightness = 0;
+		int hTrans = i / (byteWidth) * byteWidth * 16 + i % byteWidth;
+		for(int part = 0; part < 16; part++){
+			brightness += bitTable[byteImage[hTrans + part * byteWidth]];}
+		brightnesses[i] = brightness;
+		if((int)brightness <= 4){
+			bestChars[i] = 0x10;}}
+
+	byteIndex = 0;
+	std::vector< std::vector<int> > compPart;
+	compPart.resize(95, std::vector<int> (byteLength, 0));
+
+	//Compares every byte portion to an equivalent position in a character byte set, still a set of 16 byte comparisons
+	while(byteIndex != byteLength){ 
+		if(bestChars[byteIndex / (16 * byteWidth) * byteWidth + byteIndex % byteWidth != 0x10]){
+			for(int charNum = 0; charNum < 95; charNum++){
+				compPart[charNum][byteIndex] = byteImage[byteIndex] ^ chars[charNum][(byteIndex / byteWidth) & 15];}}
+		byteIndex++;}
+
+	byteIndex = 0;
+
+	//Uses the information gathered from the previous two step in order to find the best characters for each slot.
+	//cout<<"A";
+	while(byteIndex != byteWidth)
+	{
+		//cout<<"B";
+		int vertPos = 0;
+		while(vertPos != byteHeight)
+		{
+			//cout<<"C";
+			if(bestChars[vertPos/16 * byteWidth + byteIndex] !=0x10)
+			{
+				int lowest = 0xff;
+				for(int charNum = 0x1; charNum != 0x5f; charNum++)
+				{
+					//cout<<"D";
+					int charComp = 0;
+					for(int vertOff = 0; vertOff != 16; vertOff++)
+					{
+						charComp += bitTable[compPart[charNum][(vertPos + vertOff) * byteWidth + byteIndex]];
+					}
+
+					charComp += abs(chBright[charNum] / 4 - brightnesses[vertPos / 16 * byteWidth + byteIndex])/2;
 					//cout<<"D2";
 
 					if(charComp < lowest)
@@ -540,7 +660,7 @@ void textifyToTerminal(unsigned char pix[]){
 //Takes ALL PNG IMAGES from the IN folder and outputs text files to the OUT if options suggest.
 //Testing mode calls textifyToTerminal for DEBUGGING and general TESTING
 //REQUIRES Directory in/ and out/ to exist in the same folder as the .exe
-void textifyDirectory(){
+void textifyDirectory(int numConvert){
 	DIR *pdir = NULL;
 	pdir = opendir("./in");
 	struct dirent *pent = NULL;
@@ -549,6 +669,10 @@ void textifyDirectory(){
 		exit(3);}
 	int counter = 0;
 	while(pent = readdir(pdir)){
+		if(counter < numConvert){
+			counter++;
+			continue;
+		}
 		if(pent == NULL){
 			cout << "\nERROR!  pent could not be intialized correctly";
 			exit(3);}
@@ -577,7 +701,7 @@ void textifyDirectory(){
 				gray.normalize(0, 255);
 				gray.threshold(thresh);
 				gray.laplacian();
-
+//				gray.save(("edge" + outfile).c_str());
 				scaled.resize(byteWidth, byteHeight/16);
 				scaled.normalize(0, 255);
 
@@ -587,9 +711,10 @@ void textifyDirectory(){
 					textifyToTerminal(gray.data());
 					cout<<endl;}
 				else{
-					textifySmart(scaled.data(), gray.data(), outfile.c_str());}
+//					textifySmart(scaled.data(), gray.data(), outfile.c_str());
+					textifySmartBright(scaled.data(), gray.data(), ("bright" + outfile).c_str());}
 				counter++;
-				cout << outfile.c_str() << " converted, with "<< counter << " files made."<<endl;
+				cout << outfile.c_str() <<" and "<< ("bright" + outfile).c_str()<< " converted, with "<< counter << " files made."<<endl;
 				img.clear();}}}
 	closedir(pdir);}
 
@@ -604,10 +729,24 @@ int main(){
 		CImg<unsigned char> character(name.c_str());
 		::chPics.insert(character, i);
 	}
-	std::string input;
-	cout<<"What do you want to do?"<<endl<<"1: Textify an image (Default)"<<endl<<"2: Textify the in/ directory"<<endl;
-	std::getline(cin, input);
+//	std::string input;
+//	cout<<"What do you want to do?"<<endl<<"1: Textify an image (Default)"<<endl<<"2: Textify the in/ directory"<<endl;
+//	std::getline(cin, input);
 
+
+	std::string initializer = "in/00000001.png";
+	CImg<unsigned char> img(initializer.c_str());
+	init(img.width(), img.height());
+	cout<<"Threshold"<<endl;
+//	std::getline(cin, input);
+	cin>>::thresh;
+	::toTerminal = false;
+	int numConverted;
+	cin >> numConverted;
+	textifyDirectory(numConverted);
+	return 0;}
+
+/*
 	//If "2" is the first value in the inputted string, then DIRECTORY mode is activated.
 	//Not default option due to huge dependency issues on the user's setup.
 	//Will need to add documentation later and a better GUI
@@ -665,5 +804,4 @@ int main(){
 			}
 			//else {textify(gray.data(), "media/textified.txt");}
 			cout<<"Converted"<<endl;
-			cout<<"Picture Name: ";}}
-	return 0;}
+			cout<<"Picture Name: ";}}*/
